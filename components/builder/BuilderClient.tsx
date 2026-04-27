@@ -63,6 +63,37 @@ export function BuilderClient({ form: initialForm, initialFields }: BuilderClien
     }
   }
 
+  async function duplicateField(id: string) {
+    const source = fields.find((f) => f.id === id);
+    if (!source) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/forms/${form.id}/fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: source.type, label: `${source.label} (copy)`, placeholder: source.placeholder, helpText: source.helpText, isRequired: source.isRequired }),
+      });
+      if (!res.ok) throw new Error();
+      const field: FormField = await res.json();
+      // Apply options from source
+      if (source.options) {
+        await fetch(`/api/forms/${form.id}/fields/${field.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ options: source.options }),
+        });
+        field.options = source.options;
+      }
+      setFields((prev) => [...prev, field]);
+      setSelectedId(field.id);
+      showToast("Field duplicated");
+    } catch {
+      showToast("Failed to duplicate field");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const updateField = useCallback(async (id: string, updates: Partial<FormField>) => {
     // Optimistic
     setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
@@ -188,6 +219,7 @@ export function BuilderClient({ form: initialForm, initialFields }: BuilderClien
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDelete={deleteField}
+          onDuplicate={duplicateField}
           onReorder={reorderFields}
         />
 

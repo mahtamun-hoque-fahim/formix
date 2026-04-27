@@ -15,12 +15,13 @@ interface BuilderCanvasProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onReorder: (fields: FormField[]) => void;
 }
 
-export function BuilderCanvas({ fields, selectedId, onSelect, onDelete, onReorder }: BuilderCanvasProps) {
+export function BuilderCanvas({ fields, selectedId, onSelect, onDelete, onDuplicate, onReorder }: BuilderCanvasProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -63,6 +64,7 @@ export function BuilderCanvas({ fields, selectedId, onSelect, onDelete, onReorde
                   isSelected={selectedId === field.id}
                   onSelect={() => onSelect(field.id)}
                   onDelete={() => onDelete(field.id)}
+                  onDuplicate={() => onDuplicate(field.id)}
                 />
               ))}
             </div>

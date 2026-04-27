@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/clerk";
 import { getDb } from "@/lib/db";
-import { forms, formSubmissions, formFields, fieldResponses } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -31,30 +31,35 @@ export default async function ResponsesPage({ params }: Props) {
     .where(eq(formSubmissions.formId, id))
     .orderBy(desc(formSubmissions.submittedAt));
 
-  // Fetch all field responses for these submissions
-  const submissionIds = submissions.map((s) => s.id);
-  const allResponses = submissionIds.length > 0
-    ? await db.select().from(fieldResponses)
-        .where(eq(fieldResponses.submissionId, submissionIds[0]))
-    : [];
+  const visibleFields = fields.filter(
+    (f) => f.type !== "section_header" && f.type !== "divider"
+  );
 
-  const visibleFields = fields.filter((f) => f.type !== "section_header" && f.type !== "divider");
+  const submissionIds = submissions.map((s) => s.id);
+  const allResponses =
+    submissionIds.length > 0
+      ? await db.select().from(fieldResponses)
+          .where(inArray(fieldResponses.submissionId, submissionIds))
+      : [];
+
+  const responseMap = new Map<string, Map<string, string>>();
+  for (const r of allResponses) {
+    if (!responseMap.has(r.submissionId)) responseMap.set(r.submissionId, new Map());
+    responseMap.get(r.submissionId)!.set(r.fieldId, r.value ?? "");
+  }
+
+  const tableFields = visibleFields.slice(0, 5);
+  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/f/${form.slug}`;
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Link
-            href={`/dashboard/forms/${id}`}
-            className="p-1.5 rounded transition-colors"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <Link href={`/dashboard/forms/${id}`} className="p-1.5 rounded transition-colors" style={{ color: "var(--text-muted)" }}>
             <ChevronLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold font-syne" style={{ color: "var(--text)" }}>
-              {form.title}
-            </h1>
+            <h1 className="text-2xl font-bold font-syne" style={{ color: "var(--text)" }}>{form.title}</h1>
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge status={form.status as "draft" | "published" | "closed"} />
               <span className="text-sm" style={{ color: "var(--text-muted)" }}>
@@ -65,100 +70,92 @@ export default async function ResponsesPage({ params }: Props) {
         </div>
 
         {submissions.length > 0 && (
-          <div className="flex items-center gap-2">
-            <a
-              href={`/api/export/${id}?format=csv`}
-              className="text-sm px-3 py-1.5 rounded border transition-colors"
-              style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
-            >
-              CSV
-            </a>
-            <a
-              href={`/api/export/${id}?format=xlsx`}
-              className="text-sm px-3 py-1.5 rounded border transition-colors"
-              style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
-            >
-              Excel
-            </a>
-            <a
-              href={`/api/export/${id}?format=json`}
-              className="text-sm px-3 py-1.5 rounded border transition-colors"
-              style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
-            >
-              JSON
-            </a>
-            <a
-              href={`/api/export/${id}?format=pdf`}
-              className="text-sm px-3 py-1.5 rounded transition-colors"
-              style={{ color: "white", background: "var(--accent)" }}
-            >
-              PDF
-            </a>
+          <div className="flex items-center gap-2 shrink-0">
+            {(["csv", "json", "xlsx", "pdf"] as const).map((fmt) => (
+              <a key={fmt} href={`/api/export/${id}?format=${fmt}`}
+                className="text-xs px-3 py-1.5 rounded border uppercase font-mono transition-colors"
+                style={{
+                  color: fmt === "pdf" ? "white" : "var(--text-muted)",
+                  borderColor: fmt === "pdf" ? "transparent" : "var(--border)",
+                  background: fmt === "pdf" ? "var(--accent)" : "transparent",
+                }}>
+                {fmt}
+              </a>
+            ))}
           </div>
         )}
       </div>
 
+      {form.status === "published" && submissions.length === 0 && (
+        <div className="flex items-center gap-3 rounded-md px-4 py-3 mb-6"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <span className="text-sm" style={{ color: "var(--text-muted)" }}>Share link:</span>
+          <a href={publicUrl} target="_blank" rel="noopener noreferrer"
+            className="text-sm font-mono" style={{ color: "var(--accent)" }}>{publicUrl}</a>
+        </div>
+      )}
+
       {submissions.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-20 rounded-md"
-          style={{ border: "1px dashed var(--border)" }}
-        >
+        <div className="flex flex-col items-center justify-center py-20 rounded-md"
+          style={{ border: "1px dashed var(--border)" }}>
           <p className="font-medium mb-1" style={{ color: "var(--text)" }}>No responses yet</p>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             {form.status === "published"
-              ? "Share the form link to start collecting responses."
+              ? "Your form is live. Share the link to start collecting responses."
               : "Publish your form to start collecting responses."}
           </p>
-          {form.status === "published" && (
-            <p className="mt-3 text-sm font-mono px-3 py-1.5 rounded"
-              style={{ background: "var(--surface)", color: "var(--accent)", border: "1px solid var(--border)" }}>
-              {process.env.NEXT_PUBLIC_APP_URL}/f/{form.slug}
-            </p>
-          )}
         </div>
       ) : (
-        <div className="rounded-md overflow-auto" style={{ border: "1px solid var(--border)" }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
-                <th className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                  #
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                  Submitted
-                </th>
-                {visibleFields.slice(0, 4).map((f) => (
-                  <th key={f.id} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                    {f.label}
-                  </th>
-                ))}
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((sub, i) => (
-                <tr key={sub.id} style={{ borderBottom: "1px solid var(--border-muted)" }}>
-                  <td className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                    {submissions.length - i}
-                  </td>
-                  <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                    {formatDateTime(sub.submittedAt)}
-                  </td>
-                  {visibleFields.slice(0, 4).map((f) => (
-                    <td key={f.id} className="px-4 py-3 text-xs max-w-[180px] truncate" style={{ color: "var(--text)" }}>
-                      —
-                    </td>
+        <>
+          <div className="rounded-md overflow-auto" style={{ border: "1px solid var(--border)" }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+                  <th className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>#</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Submitted</th>
+                  {tableFields.map((f) => (
+                    <th key={f.id} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap max-w-[160px] truncate" style={{ color: "var(--text-muted)" }}>
+                      {f.label}
+                    </th>
                   ))}
-                  <td className="px-4 py-3">
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      View
-                    </span>
-                  </td>
+                  {visibleFields.length > 5 && (
+                    <th className="px-4 py-3 text-xs font-medium text-right" style={{ color: "var(--text-disabled)" }}>
+                      +{visibleFields.length - 5} more
+                    </th>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {submissions.map((sub, i) => {
+                  const resMap = responseMap.get(sub.id) ?? new Map<string, string>();
+                  return (
+                    <tr key={sub.id} style={{ borderBottom: "1px solid var(--border-muted)" }}>
+                      <td className="px-4 py-3 text-xs font-mono" style={{ color: "var(--text-muted)" }}>{submissions.length - i}</td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{formatDateTime(sub.submittedAt)}</td>
+                      {tableFields.map((f) => {
+                        const raw = resMap.get(f.id) ?? "";
+                        let display = raw;
+                        try { const p = JSON.parse(raw); if (Array.isArray(p)) display = p.join(", "); } catch {}
+                        return (
+                          <td key={f.id} className="px-4 py-3 text-xs max-w-[160px] truncate"
+                            style={{ color: display ? "var(--text)" : "var(--text-disabled)" }} title={display || "—"}>
+                            {display || "—"}
+                          </td>
+                        );
+                      })}
+                      {visibleFields.length > 5 && <td className="px-4 py-3" />}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {visibleFields.length > 5 && (
+            <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
+              Showing 5 of {visibleFields.length} fields. Export to see all columns.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

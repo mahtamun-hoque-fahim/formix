@@ -3,13 +3,14 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FormField } from "@/lib/db/schema";
 import { getFieldDef } from "@/lib/field-types";
-import { GripVertical, Trash2, Star } from "lucide-react";
+import { GripVertical, Trash2, Copy, Star } from "lucide-react";
 
 interface FieldBlockProps {
   field: FormField;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }
 
 function FieldPreview({ field }: { field: FormField }) {
@@ -32,12 +33,15 @@ function FieldPreview({ field }: { field: FormField }) {
     );
   }
   if (field.type === "radio" || field.type === "checkbox") {
+    const isCheckbox = field.type === "checkbox";
     return (
       <div className="flex flex-col gap-1.5">
         {choices.slice(0, 3).map((c, i) => (
           <div key={i} className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 rounded-full shrink-0"
-              style={{ border: "1px solid var(--border)" }} />
+            <div
+              className={`w-3.5 h-3.5 shrink-0 ${isCheckbox ? "rounded-sm" : "rounded-full"}`}
+              style={{ border: "1px solid var(--border)" }}
+            />
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>{c}</span>
           </div>
         ))}
@@ -84,6 +88,17 @@ function FieldPreview({ field }: { field: FormField }) {
       </div>
     );
   }
+  if (field.type === "date" || field.type === "time" || field.type === "datetime") {
+    const placeholder =
+      field.type === "date" ? "MM / DD / YYYY" :
+      field.type === "time" ? "HH : MM" : "MM / DD / YYYY  HH : MM";
+    return (
+      <div className="rounded px-3 py-2 text-sm"
+        style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-disabled)" }}>
+        {placeholder}
+      </div>
+    );
+  }
   return (
     <div className="rounded px-3 py-2 text-sm"
       style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-disabled)" }}>
@@ -92,14 +107,15 @@ function FieldPreview({ field }: { field: FormField }) {
   );
 }
 
-export function FieldBlock({ field, isSelected, onSelect, onDelete }: FieldBlockProps) {
+export function FieldBlock({ field, isSelected, onSelect, onDelete, onDuplicate }: FieldBlockProps) {
   const def = getFieldDef(field.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 999 : undefined,
   };
 
   return (
@@ -107,19 +123,21 @@ export function FieldBlock({ field, isSelected, onSelect, onDelete }: FieldBlock
       ref={setNodeRef}
       style={{
         ...style,
-        border: `1px solid ${isSelected ? "rgba(99,102,241,0.4)" : "var(--border)"}`,
+        border: `1px solid ${isSelected ? "rgba(99,102,241,0.45)" : "var(--border)"}`,
         background: isSelected ? "var(--surface-elevated)" : "var(--surface)",
+        boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.5)" : undefined,
       }}
       className="rounded-md p-4 cursor-pointer transition-colors group"
       onClick={onSelect}
     >
+      {/* Top bar */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           {/* Drag handle */}
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing"
+            className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded"
             style={{ color: "var(--text-disabled)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -131,13 +149,25 @@ export function FieldBlock({ field, isSelected, onSelect, onDelete }: FieldBlock
             <span className="text-xs" style={{ color: "var(--destructive)" }}>*</span>
           )}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded"
-          style={{ color: "var(--text-muted)" }}
-        >
-          <Trash2 size={13} />
-        </button>
+        {/* Actions — shown on hover */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            title="Duplicate field"
+            onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+            className="p-1 rounded transition-colors"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <Copy size={13} />
+          </button>
+          <button
+            title="Delete field"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1 rounded transition-colors"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       </div>
 
       {field.type !== "divider" && (
