@@ -13,7 +13,7 @@
 | Purpose | SaaS platform for creating, sharing, and managing forms for organizations and events with exportable responses |
 | Target User | Organizations, event teams, clubs, and businesses that need to collect structured data |
 | Key Value | Full form lifecycle: build → share → collect → export — all in one dark, clean dashboard |
-| Status | 🔄 Phase 7 next (email notifications + file upload) |
+| Status | 🔄 Phase 8 next (landing page) |
 | Repo | `github.com/mahtamun-hoque-fahim/formix` |
 | Live URL | `formix.vercel.app` |
 
@@ -189,7 +189,7 @@ field_responses  id(uuid PK), submissionId→form_submissions, fieldId→form_fi
 | 4 | Responses Dashboard | ✅ | ResponsesClient (Responses + Summary tabs), SubmissionDrawer (side panel, all types rendered, inline delete), ResponseSummary (bar charts, star dist, avg/min/max), copy link |
 | 5 | Export Engine | ✅ | CSV + JSON (native), XLSX (SheetJS 2-sheet, frozen headers), PDF (jspdf dark theme, accent bar, page numbers) |
 | 6 | Admin Dashboard | ✅ | Platform stats (30d/7d growth), Users table (search/filter/badges), AdminUserDrawer (role/plan/active toggle), All Forms audit, admin sidebar nav |
-| 7 | Email + File Upload | ⏳ | Resend notification on submission, Cloudinary upload for file_upload field |
+| 7 | Email + File Upload | ✅ | Resend notification on submission (dark HTML email, field preview, fire-and-forget), Cloudinary upload for file_upload field (POST /api/upload, real-time progress, error state, clickable URL) |
 | 8 | Landing Page | ⏳ | Hero, features, pricing (free/pro), CTA |
 | 9 | Polish & Deploy | ⏳ | OG image, error boundaries, loading skeletons, rate limiting, Vercel prod |
 
@@ -197,8 +197,8 @@ field_responses  id(uuid PK), submissionId→form_submissions, fieldId→form_fi
 
 ## Next Steps
 
-1. [ ] Install `resend`, create `lib/resend.ts`, send email on `POST /api/submissions` when `notifyOnSubmission = true`
-2. [ ] Wire `POST /api/upload` → Cloudinary signed upload, update FormRenderer file_upload to POST blob and store URL
+1. [x] ~~Install `resend`, create `lib/resend.ts`, send email on `POST /api/submissions` when `notifyOnSubmission = true`~~
+2. [x] ~~Wire `POST /api/upload` → Cloudinary signed upload, update FormRenderer file_upload to POST blob and store URL~~
 3. [ ] Build `app/page.tsx` landing — hero, features grid, pricing table (free/pro), sign-up CTA
 4. [ ] Add `@vercel/og` OG image for `/f/[slug]` — form title + response count
 5. [ ] Add Upstash Redis rate limiting on `POST /api/submissions` (per IP, e.g. 10/min)
