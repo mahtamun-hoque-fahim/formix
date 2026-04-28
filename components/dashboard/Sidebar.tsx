@@ -7,6 +7,7 @@ import {
   FileText,
   Settings,
   Shield,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,9 @@ const userNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
-  { label: "Admin Panel", href: "/admin", icon: Shield },
+  { label: "Overview", href: "/admin", icon: Shield },
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "All Forms", href: "/admin/forms", icon: FileText },
 ];
 
 interface SidebarProps {
