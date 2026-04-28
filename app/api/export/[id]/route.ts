@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 export async function GET(
   req: Request,
@@ -15,52 +15,88 @@ export async function GET(
   const format = url.searchParams.get("format") ?? "csv";
 
   const db = getDb();
-  const [form] = await db.select().from(forms)
+  const [form] = await db
+    .select()
+    .from(forms)
     .where(and(eq(forms.id, id), eq(forms.userId, userId)));
   if (!form) return Response.json({ error: "Not found" }, { status: 404 });
 
-  const fields = await db.select().from(formFields)
+  const fields = await db
+    .select()
+    .from(formFields)
     .where(eq(formFields.formId, id))
     .orderBy(formFields.order);
 
-  const visibleFields = fields.filter((f) => f.type !== "section_header" && f.type !== "divider");
+  const visibleFields = fields.filter(
+    (f) => f.type !== "section_header" && f.type !== "divider"
+  );
 
-  const submissions = await db.select().from(formSubmissions)
+  const submissions = await db
+    .select()
+    .from(formSubmissions)
     .where(eq(formSubmissions.formId, id))
     .orderBy(desc(formSubmissions.submittedAt));
 
-  // Fetch all field responses
-  const allResponses = submissions.length > 0
-    ? await db.select().from(fieldResponses)
-        .where(eq(fieldResponses.submissionId, submissions[0].id))
-    : [];
+  // Load ALL field responses in one query
+  const submissionIds = submissions.map((s) => s.id);
+  const allResponses =
+    submissionIds.length > 0
+      ? await db
+          .select()
+          .from(fieldResponses)
+          .where(inArray(fieldResponses.submissionId, submissionIds))
+      : [];
 
-  // Build rows: each submission → one row with field values
+  // Build nested map: submissionId → fieldId → value
   const responseMap = new Map<string, Map<string, string>>();
   for (const r of allResponses) {
-    if (!responseMap.has(r.submissionId)) responseMap.set(r.submissionId, new Map());
+    if (!responseMap.has(r.submissionId))
+      responseMap.set(r.submissionId, new Map());
     responseMap.get(r.submissionId)!.set(r.fieldId, r.value ?? "");
   }
 
-  const headers = ["#", "Submitted At", ...visibleFields.map((f) => f.label)];
+  function getDisplayValue(raw: string, fieldType: string): string {
+    if (!raw) return "";
+    // Checkbox arrays stored as JSON
+    if (fieldType === "checkbox") {
+      try {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) return arr.join(", ");
+      } catch {}
+    }
+    return raw;
+  }
+
+  const headers = [
+    "#",
+    "Submitted At",
+    "Respondent Email",
+    ...visibleFields.map((f) => f.label),
+  ];
+
   const rows = submissions.map((sub, i) => {
-    const resMap = responseMap.get(sub.id) ?? new Map();
+    const resMap = responseMap.get(sub.id) ?? new Map<string, string>();
     return [
       String(i + 1),
       sub.submittedAt.toISOString(),
-      ...visibleFields.map((f) => resMap.get(f.id) ?? ""),
+      sub.respondentEmail ?? "",
+      ...visibleFields.map((f) =>
+        getDisplayValue(resMap.get(f.id) ?? "", f.type)
+      ),
     ];
   });
 
+  // ── JSON ──────────────────────────────────────────────────────────────────
   if (format === "json") {
     const data = submissions.map((sub, i) => {
-      const resMap = responseMap.get(sub.id) ?? new Map();
+      const resMap = responseMap.get(sub.id) ?? new Map<string, string>();
       const entry: Record<string, string | number> = {
         index: i + 1,
         submitted_at: sub.submittedAt.toISOString(),
+        respondent_email: sub.respondentEmail ?? "",
       };
       for (const f of visibleFields) {
-        entry[f.label] = resMap.get(f.id) ?? "";
+        entry[f.label] = getDisplayValue(resMap.get(f.id) ?? "", f.type);
       }
       return entry;
     });
@@ -72,8 +108,9 @@ export async function GET(
     });
   }
 
+  // ── CSV ───────────────────────────────────────────────────────────────────
   if (format === "csv") {
-    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
     return new Response(csv, {
       headers: {
@@ -83,9 +120,21 @@ export async function GET(
     });
   }
 
-  // xlsx and pdf — Phase 5
-  return Response.json(
-    { error: `Export format '${format}' will be available in Phase 5.` },
-    { status: 501 }
-  );
+  // ── XLSX (Phase 5 — requires xlsx npm package) ────────────────────────────
+  if (format === "xlsx") {
+    return Response.json(
+      { error: "XLSX export will be available in Phase 5." },
+      { status: 501 }
+    );
+  }
+
+  // ── PDF (Phase 5 — requires jspdf) ───────────────────────────────────────
+  if (format === "pdf") {
+    return Response.json(
+      { error: "PDF export will be available in Phase 5." },
+      { status: 501 }
+    );
+  }
+
+  return Response.json({ error: `Unknown format: ${format}` }, { status: 400 });
 }
