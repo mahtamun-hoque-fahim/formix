@@ -1,7 +1,8 @@
 import { getDb } from "@/lib/db";
-import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
+import { forms, formFields, formSubmissions, fieldResponses, users } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { headers } from "next/headers";
+import { sendSubmissionNotification } from "@/lib/resend";
 
 interface SubmitPayload {
   formId: string;
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     for (const field of fields) {
       if (field.isRequired && field.type !== "section_header" && field.type !== "divider") {
         const val = responseMap.get(field.id);
-        if (!val || val.trim() === "" || val === "[]") {
+        if (!val || val.trim() === "" || val === "[]" || val === "__uploading__" || val.startsWith("__error__")) {
           return Response.json(
             { error: `"${field.label}" is required.`, fieldId: field.id },
             { status: 422 }
@@ -94,6 +95,36 @@ export async function POST(req: Request) {
           value: r.value,
         }))
       );
+    }
+
+    // Send email notification (fire-and-forget — never block the response)
+    if (form.notifyOnSubmission) {
+      const [owner] = await db.select().from(users).where(eq(users.id, form.userId));
+      if (owner?.email) {
+        const fieldSummary = toInsert
+          .map((r) => {
+            const field = fields.find((f) => f.id === r.fieldId);
+            if (!field) return null;
+            let displayValue = r.value;
+            try {
+              const parsed = JSON.parse(r.value);
+              if (Array.isArray(parsed)) displayValue = parsed.join(", ");
+            } catch {}
+            return { label: field.label, value: displayValue };
+          })
+          .filter(Boolean) as { label: string; value: string }[];
+
+        sendSubmissionNotification({
+          toEmail: owner.email,
+          toName: owner.name ?? null,
+          formTitle: form.title,
+          formSlug: form.slug,
+          respondentEmail,
+          submissionId: submission.id,
+          submittedAt: new Date(),
+          fieldSummary,
+        }).catch((err) => console.error("[submissions] email error:", err));
+      }
     }
 
     return Response.json({

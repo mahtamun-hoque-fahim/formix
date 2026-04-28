@@ -40,6 +40,15 @@ export function FormRenderer({ form, fields }: FormRendererProps) {
         }
       } else if (field.type === "rating") {
         if (!val || val === "0") newErrors[field.id] = "Please select a rating.";
+      } else if (field.type === "file_upload") {
+        const strVal = String(val ?? "");
+        if (!strVal || strVal === "__uploading__" || strVal.startsWith("__error__")) {
+          newErrors[field.id] = strVal === "__uploading__"
+            ? "Please wait for the upload to finish."
+            : strVal.startsWith("__error__")
+            ? "Please re-upload the file."
+            : "This field is required.";
+        }
       } else {
         if (!val || String(val).trim() === "") {
           newErrors[field.id] = "This field is required.";
@@ -475,17 +484,80 @@ function FieldControl({ field, value, error, accent, opts, inputBase, focusStyle
 
     // ── File Upload ──────────────────────────────────────────────────────────
     case "file_upload": {
-      const fileName = String(value ?? "");
+      const fileUrl = String(value ?? "");
+      const displayName = fileUrl ? fileUrl.split("/").pop()?.split("?")[0] ?? "Uploaded file" : "";
+      const maxMb = (opts?.maxSizeMb as number) ?? 20;
+
+      async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > maxMb * 1024 * 1024) {
+          onChange(`__error__File exceeds ${maxMb} MB limit`);
+          return;
+        }
+
+        onChange("__uploading__");
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            onChange(`__error__${j.error ?? "Upload failed"}`);
+            return;
+          }
+          const { url } = await res.json();
+          onChange(url);
+        } catch {
+          onChange("__error__Upload failed. Please try again.");
+        }
+      }
+
+      const isUploading = fileUrl === "__uploading__";
+      const uploadError = fileUrl.startsWith("__error__") ? fileUrl.slice(9) : null;
+      const hasFile = fileUrl && !isUploading && !uploadError;
+
       return (
         <div>
-          {fileName ? (
+          {isUploading ? (
+            <div
+              className="flex items-center justify-center gap-2 rounded-md py-8"
+              style={{ border: `1px dashed ${accent}50`, background: `${accent}08` }}
+            >
+              <Loader2 size={16} className="animate-spin" style={{ color: accent }} />
+              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Uploading…
+              </span>
+            </div>
+          ) : uploadError ? (
+            <div className="space-y-2">
+              <div
+                className="flex items-center justify-between rounded-md px-3 py-2.5"
+                style={{ border: "1px solid var(--destructive)", background: "var(--destructive-dim)" }}
+              >
+                <span className="text-sm" style={{ color: "var(--destructive)" }}>
+                  {uploadError}
+                </span>
+                <button type="button" onClick={() => onChange("")} className="ml-2 shrink-0">
+                  <X size={14} style={{ color: "var(--destructive)" }} />
+                </button>
+              </div>
+            </div>
+          ) : hasFile ? (
             <div
               className="flex items-center justify-between rounded-md px-3 py-2.5"
               style={{ border: `1px solid ${accent}50`, background: `${accent}10` }}
             >
-              <span className="text-sm truncate" style={{ color: "var(--text)" }}>
-                {fileName.split("/").pop()}
-              </span>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm truncate underline underline-offset-2"
+                style={{ color: accent }}
+              >
+                {displayName}
+              </a>
               <button
                 type="button"
                 onClick={() => onChange("")}
@@ -509,16 +581,13 @@ function FieldControl({ field, value, error, accent, opts, inputBase, focusStyle
               </span>
               <span className="text-xs" style={{ color: "var(--text-disabled)" }}>
                 {(opts?.allowedTypes as string[])?.join(", ") || "Any file"}
-                {opts?.maxSizeMb ? ` · Max ${opts.maxSizeMb}MB` : ""}
+                {` · Max ${maxMb}MB`}
               </span>
               <input
                 type="file"
                 className="sr-only"
                 accept={(opts?.allowedTypes as string[])?.join(",") || undefined}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onChange(file.name); // Phase 5 will upload to Cloudinary
-                }}
+                onChange={handleFileChange}
               />
             </label>
           )}
