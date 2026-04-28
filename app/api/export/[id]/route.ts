@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
+import { buildXlsx } from "@/lib/export/excel";
+import { buildPdf } from "@/lib/export/pdf";
 
 export async function GET(
   req: Request,
@@ -12,9 +14,10 @@ export async function GET(
 
   const { id } = await params;
   const url = new URL(req.url);
-  const format = url.searchParams.get("format") ?? "csv";
+  const format = (url.searchParams.get("format") ?? "csv").toLowerCase();
 
   const db = getDb();
+
   const [form] = await db
     .select()
     .from(forms)
@@ -37,7 +40,6 @@ export async function GET(
     .where(eq(formSubmissions.formId, id))
     .orderBy(desc(formSubmissions.submittedAt));
 
-  // Load ALL field responses in one query
   const submissionIds = submissions.map((s) => s.id);
   const allResponses =
     submissionIds.length > 0
@@ -47,7 +49,7 @@ export async function GET(
           .where(inArray(fieldResponses.submissionId, submissionIds))
       : [];
 
-  // Build nested map: submissionId → fieldId → value
+  // submissionId → fieldId → raw value
   const responseMap = new Map<string, Map<string, string>>();
   for (const r of allResponses) {
     if (!responseMap.has(r.submissionId))
@@ -55,19 +57,20 @@ export async function GET(
     responseMap.get(r.submissionId)!.set(r.fieldId, r.value ?? "");
   }
 
-  function getDisplayValue(raw: string, fieldType: string): string {
+  function display(raw: string, type: string): string {
     if (!raw) return "";
-    // Checkbox arrays stored as JSON
-    if (fieldType === "checkbox") {
+    if (type === "checkbox") {
       try {
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) return arr.join(", ");
       } catch {}
     }
+    if (type === "yes_no") return raw === "yes" ? "Yes" : "No";
     return raw;
   }
 
-  const headers = [
+  // Shared header + rows used by CSV / XLSX / PDF
+  const columnHeaders = [
     "#",
     "Submitted At",
     "Respondent Email",
@@ -78,62 +81,78 @@ export async function GET(
     const resMap = responseMap.get(sub.id) ?? new Map<string, string>();
     return [
       String(i + 1),
-      sub.submittedAt.toISOString(),
+      sub.submittedAt.toLocaleString("en-US", {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      }),
       sub.respondentEmail ?? "",
-      ...visibleFields.map((f) =>
-        getDisplayValue(resMap.get(f.id) ?? "", f.type)
-      ),
+      ...visibleFields.map((f) => display(resMap.get(f.id) ?? "", f.type)),
     ];
   });
 
-  // ── JSON ──────────────────────────────────────────────────────────────────
-  if (format === "json") {
-    const data = submissions.map((sub, i) => {
-      const resMap = responseMap.get(sub.id) ?? new Map<string, string>();
-      const entry: Record<string, string | number> = {
-        index: i + 1,
-        submitted_at: sub.submittedAt.toISOString(),
-        respondent_email: sub.respondentEmail ?? "",
-      };
-      for (const f of visibleFields) {
-        entry[f.label] = getDisplayValue(resMap.get(f.id) ?? "", f.type);
-      }
-      return entry;
+  // Structured row objects for XLSX / PDF builders
+  const structuredRows = rows.map((row) => {
+    const obj: Record<string, string | number> = {};
+    columnHeaders.forEach((h, i) => {
+      obj[h] = row[i] ?? "";
     });
-    return new Response(JSON.stringify(data, null, 2), {
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${form.slug}-responses.json"`,
-      },
-    });
-  }
+    obj["#"] = Number(obj["#"]);
+    return obj as { index: number; submittedAt: string; respondentEmail: string } & Record<string, string | number>;
+  });
 
-  // ── CSV ───────────────────────────────────────────────────────────────────
+  const filename = `${form.slug}-responses`;
+
+  // ── CSV ─────────────────────────────────────────────────────────────────
   if (format === "csv") {
     const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+    const csv = [columnHeaders, ...rows]
+      .map((r) => r.map(escape).join(","))
+      .join("\n");
     return new Response(csv, {
       headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${form.slug}-responses.csv"`,
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}.csv"`,
       },
     });
   }
 
-  // ── XLSX (Phase 5 — requires xlsx npm package) ────────────────────────────
-  if (format === "xlsx") {
-    return Response.json(
-      { error: "XLSX export will be available in Phase 5." },
-      { status: 501 }
-    );
+  // ── JSON ─────────────────────────────────────────────────────────────────
+  if (format === "json") {
+    return new Response(JSON.stringify(structuredRows, null, 2), {
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Disposition": `attachment; filename="${filename}.json"`,
+      },
+    });
   }
 
-  // ── PDF (Phase 5 — requires jspdf) ───────────────────────────────────────
+  // ── XLSX ─────────────────────────────────────────────────────────────────
+  if (format === "xlsx") {
+    const buffer = buildXlsx(structuredRows as Parameters<typeof buildXlsx>[0], form.title);
+    return new Response(buffer as unknown as BodyInit, {
+      headers: {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${filename}.xlsx"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  // ── PDF ──────────────────────────────────────────────────────────────────
   if (format === "pdf") {
-    return Response.json(
-      { error: "PDF export will be available in Phase 5." },
-      { status: 501 }
+    const buffer = buildPdf(
+      structuredRows as Parameters<typeof buildPdf>[0],
+      form.title,
+      form.slug
     );
+    return new Response(buffer as unknown as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   return Response.json({ error: `Unknown format: ${format}` }, { status: 400 });
