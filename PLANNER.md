@@ -218,3 +218,34 @@ field_responses  id(uuid PK), submissionId→form_submissions, fieldId→form_fi
 | 2026-04-28 | Checkbox values → JSON.stringify(string[]) in field_responses.value |
 | 2026-04-28 | AdminUserDrawer patches immediately on toggle — no save button |
 | 2026-04-28 | Export: SheetJS server-side XLSX, jspdf server-side PDF (no browser canvas) |
+
+---
+
+## Deployment Checklist (Operational — Vercel)
+
+### Env vars to add in Vercel dashboard
+
+| Variable | Where to get it |
+|---|---|
+| `DATABASE_URL` | Neon dashboard → Connection string (pooled) |
+| `DATABASE_URL_UNPOOLED` | Neon dashboard → Connection string (direct) |
+| `NEXT_PUBLIC_APP_URL` | `https://formix.vercel.app` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk dashboard → API Keys |
+| `CLERK_SECRET_KEY` | Clerk dashboard → API Keys |
+| `CLERK_WEBHOOK_SECRET` | Clerk dashboard → Webhooks → signing secret |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary dashboard |
+| `CLOUDINARY_API_KEY` | Cloudinary dashboard |
+| `CLOUDINARY_API_SECRET` | Cloudinary dashboard |
+| `RESEND_API_KEY` | Resend dashboard |
+| `RESEND_FROM_EMAIL` | `notify@formix.app` (verify domain first) |
+| `UPSTASH_REDIS_REST_URL` | Upstash dashboard → REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash dashboard → REST Token |
+
+### Steps after env vars are set
+
+1. Run `npx drizzle-kit push` locally with `DATABASE_URL_UNPOOLED` to push schema to Neon
+2. In Clerk dashboard → Webhooks → add endpoint: `https://formix.vercel.app/api/webhooks/clerk`
+   - Events to subscribe: `user.created`, `user.updated`, `user.deleted`
+3. Set admin role: Clerk dashboard → Users → find your user → publicMetadata → `{"role":"admin"}`
+4. Deploy to Vercel (git push to main auto-triggers deploy)
+5. Verify: sign up → dashboard loads → create form → submit → check responses → export
