@@ -190,7 +190,7 @@ field_responses  id(uuid PK), submissionId→form_submissions, fieldId→form_fi
 | 5 | Export Engine | ✅ | CSV + JSON (native), XLSX (SheetJS 2-sheet, frozen headers), PDF (jspdf dark theme, accent bar, page numbers) |
 | 6 | Admin Dashboard | ✅ | Platform stats (30d/7d growth), Users table (search/filter/badges), AdminUserDrawer (role/plan/active toggle), All Forms audit, admin sidebar nav |
 | 7 | Email + File Upload | ✅ | Resend notification on submission (dark HTML email, field preview, fire-and-forget), Cloudinary upload for file_upload field (POST /api/upload, real-time progress, error state, clickable URL) |
-| 8 | Landing Page | ⏳ | Hero, features, pricing (free/pro), CTA |
+| 8 | Landing Page | ✅ | Hero, features, pricing (free/pro), CTA |
 | 9 | Polish & Deploy | ⏳ | OG image, error boundaries, loading skeletons, rate limiting, Vercel prod |
 
 ---
@@ -199,7 +199,7 @@ field_responses  id(uuid PK), submissionId→form_submissions, fieldId→form_fi
 
 1. [x] ~~Install `resend`, create `lib/resend.ts`, send email on `POST /api/submissions` when `notifyOnSubmission = true`~~
 2. [x] ~~Wire `POST /api/upload` → Cloudinary signed upload, update FormRenderer file_upload to POST blob and store URL~~
-3. [ ] Build `app/page.tsx` landing — hero, features grid, pricing table (free/pro), sign-up CTA
+3. [x] ~~Build `app/page.tsx` landing — hero, features grid, pricing table (free/pro), sign-up CTA~~ — hero, features grid, pricing table (free/pro), sign-up CTA
 4. [ ] Add `@vercel/og` OG image for `/f/[slug]` — form title + response count
 5. [ ] Add Upstash Redis rate limiting on `POST /api/submissions` (per IP, e.g. 10/min)
 6. [ ] Add Suspense + skeleton loaders to dashboard pages
