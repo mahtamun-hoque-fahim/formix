@@ -3,6 +3,7 @@ import { forms, formFields, formSubmissions, fieldResponses, users } from "@/lib
 import { eq, count } from "drizzle-orm";
 import { headers } from "next/headers";
 import { sendSubmissionNotification } from "@/lib/resend";
+import { getRatelimiter } from "@/lib/ratelimit";
 
 interface SubmitPayload {
   formId: string;
@@ -11,6 +12,20 @@ interface SubmitPayload {
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting — 10 submissions per IP per minute
+    const hdrsEarly = await headers();
+    const ip = hdrsEarly.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
+    const limiter = getRatelimiter();
+    if (limiter) {
+      const { success } = await limiter.limit(ip);
+      if (!success) {
+        return Response.json(
+          { error: "Too many submissions. Please wait a moment and try again." },
+          { status: 429 }
+        );
+      }
+    }
+
     const body: SubmitPayload = await req.json();
     const { formId, responses } = body;
 
@@ -59,10 +74,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // Grab respondent info
-    const hdrs = await headers();
-    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-    const ua = hdrs.get("user-agent") ?? null;
+    // Grab respondent info (ip already extracted above for rate limiting)
+    const ua = hdrsEarly.get("user-agent") ?? null;
 
     // Find respondent email — look for an email field response
     const emailFieldId = fields.find((f) => f.type === "email")?.id;

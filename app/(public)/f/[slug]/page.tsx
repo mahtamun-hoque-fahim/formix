@@ -16,9 +16,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .select({ title: forms.title, description: forms.description })
     .from(forms)
     .where(eq(forms.slug, slug));
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://formix.vercel.app";
+  const ogUrl = `${appUrl}/og?slug=${slug}`;
+
   return {
     title: form?.title ?? "Form",
     description: form?.description ?? undefined,
+    openGraph: {
+      title: form?.title ?? "Form",
+      description: form?.description ?? undefined,
+      images: [{ url: ogUrl, width: 1200, height: 630, alt: form?.title ?? "Form" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: form?.title ?? "Form",
+      description: form?.description ?? undefined,
+      images: [ogUrl],
+    },
   };
 }
 
