@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/clerk";
+import { requireAuth } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/db";
 import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";

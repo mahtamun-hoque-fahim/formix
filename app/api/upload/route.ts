@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getAuthUserId } from "@/lib/auth-helpers";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export const runtime = "nodejs"; // Cloudinary SDK requires Node.js
@@ -7,7 +7,7 @@ const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB hard cap
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await getAuthUserId();
     if (!userId) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }

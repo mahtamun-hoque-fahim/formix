@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { forms, formSubmissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -7,7 +7,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string; sid: string }> }
 ) {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, sid } = await params;

@@ -1,5 +1,5 @@
-import { requireAuth } from "@/lib/clerk";
-import { getRole } from "@/lib/clerk";
+import { requireAuth } from "@/lib/auth-helpers";
+import { getRole } from "@/lib/auth-helpers";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/lib/clerk";
-import { getRole } from "@/lib/clerk";
+import { requireAdmin } from "@/lib/auth-helpers";
+import { getRole } from "@/lib/auth-helpers";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { forms, formFields, formSubmissions, fieldResponses } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -9,7 +9,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const userId = await getAuthUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

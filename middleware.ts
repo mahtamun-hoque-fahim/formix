@@ -1,50 +1,41 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-const isPublicRoute = createRouteMatcher([
+const publicPaths = [
   "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/f/(.*)",
-  "/og(.*)",
-  "/api/webhooks(.*)",
-  "/api/submissions(.*)",
-  "/api/forms/slug/(.*)",
-]);
+  "/sign-in",
+  "/sign-up",
+  "/api/auth",
+  "/api/submissions",
+  "/api/forms/slug",
+  "/api/webhooks",
+  "/f/",
+  "/og",
+];
 
-const isAdminRoute = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
+export default auth((req) => {
+  const { nextUrl, auth: session } = req;
+  const path = nextUrl.pathname;
 
-// Guard: if Clerk keys are absent, skip auth entirely so the site doesn't 500
-const clerkConfigured =
-  !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-  !!process.env.CLERK_SECRET_KEY;
+  const isPublic = publicPaths.some((p) => path === p || path.startsWith(p));
+  if (isPublic) return NextResponse.next();
 
-const clerkHandler = clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return NextResponse.next();
-
-  const { userId, sessionClaims } = await auth();
-
-  if (!userId) {
-    const signInUrl = new URL("/sign-in", req.url);
-    signInUrl.searchParams.set("redirect_url", req.url);
+  if (!session?.user) {
+    const signInUrl = new URL("/sign-in", nextUrl);
+    signInUrl.searchParams.set("callbackUrl", nextUrl.href);
     return NextResponse.redirect(signInUrl);
   }
 
-  if (isAdminRoute(req)) {
-    const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
+  // Admin guard
+  if (path.startsWith("/admin") || path.startsWith("/api/admin")) {
+    const role = (session.user as typeof session.user & { role?: string }).role;
     if (role !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", nextUrl));
     }
   }
 
   return NextResponse.next();
 });
-
-export default function middleware(req: NextRequest, ev: unknown) {
-  if (!clerkConfigured) return NextResponse.next();
-  return (clerkHandler as (req: NextRequest, ev: unknown) => unknown)(req, ev);
-}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Syne, Onest, JetBrains_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const syne = Syne({
@@ -28,10 +28,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className={`${syne.variable} ${onest.variable} ${jetbrainsMono.variable}`}>
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={`${syne.variable} ${onest.variable} ${jetbrainsMono.variable}`}>
+      <body>
+        <SessionProvider>{children}</SessionProvider>
+      </body>
+    </html>
   );
 }

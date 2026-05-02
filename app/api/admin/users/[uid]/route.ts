@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/clerk";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

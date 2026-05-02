@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   FileText,
-  Settings,
   Shield,
   Users,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,12 +34,12 @@ interface SidebarProps {
 
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   function NavLink({ item }: { item: NavItem }) {
     const isActive = item.href === "/dashboard"
       ? pathname === "/dashboard"
       : pathname.startsWith(item.href);
-
     return (
       <Link
         href={item.href}
@@ -54,6 +54,10 @@ export function Sidebar({ role }: SidebarProps) {
       </Link>
     );
   }
+
+  const initials = session?.user?.name
+    ? session.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : session?.user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <aside
@@ -70,7 +74,6 @@ export function Sidebar({ role }: SidebarProps) {
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 flex-1">
         {userNav.map((item) => <NavLink key={item.href} item={item} />)}
-
         {role === "admin" && (
           <>
             <div className="my-3" style={{ borderTop: "1px solid var(--border)" }} />
@@ -79,12 +82,25 @@ export function Sidebar({ role }: SidebarProps) {
         )}
       </nav>
 
-      {/* User */}
+      {/* User + sign out */}
       <div className="px-3 flex items-center gap-2.5">
-        <UserButton appearance={{
-          variables: { colorPrimary: "#6366f1" },
-        }} />
-        <span className="text-sm" style={{ color: "var(--text-muted)" }}>Account</span>
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+          style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+        >
+          {initials}
+        </div>
+        <span className="text-xs truncate flex-1" style={{ color: "var(--text-muted)" }}>
+          {session?.user?.email ?? "Account"}
+        </span>
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="shrink-0 transition-colors"
+          style={{ color: "var(--text-disabled)" }}
+          title="Sign out"
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   );
