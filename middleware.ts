@@ -41,9 +41,9 @@ const clerkHandler = clerkMiddleware(async (auth, req) => {
   return NextResponse.next();
 });
 
-export default function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest, ev: unknown) {
   if (!clerkConfigured) return NextResponse.next();
-  return clerkHandler(req);
+  return (clerkHandler as (req: NextRequest, ev: unknown) => unknown)(req, ev);
 }
 
 export const config = {
