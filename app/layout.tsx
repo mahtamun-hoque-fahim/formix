@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Formix", template: "%s | Formix" },
+  title: { default: "Formify", template: "%s | Formify" },
   description: "Create, share, collect, and export form responses for your organization.",
 };
 

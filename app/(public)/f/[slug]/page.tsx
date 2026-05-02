@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .from(forms)
     .where(eq(forms.slug, slug));
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://formix.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://formify.vercel.app";
   const ogUrl = `${appUrl}/og?slug=${slug}`;
 
   return {
@@ -139,7 +139,7 @@ export default async function PublicFormPage({ params }: Props) {
             className="hover:underline"
             style={{ color: "var(--text-muted)" }}
           >
-            Formix
+            Formify
           </a>
         </p>
       </div>

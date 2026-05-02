@@ -167,7 +167,7 @@ export function SettingsClient({ form: initialForm }: SettingsClientProps) {
           />
           <Toggle
             label="Require sign-in"
-            description="Respondents must be signed in to Formix to submit."
+            description="Respondents must be signed in to Formify to submit."
             checked={requireAuth}
             onChange={setRequireAuth}
           />

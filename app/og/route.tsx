@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get("slug") ?? "";
 
-  let title = "Formix Form";
+  let title = "Formify Form";
   let description = "";
   let responseCount = 0;
   let accentColor = "#6366f1";
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
             }}
           >
             <span style={{ color: accentColor, fontSize: "13px", fontWeight: 600 }}>
-              Formix · Fill out this form
+              Formify · Fill out this form
             </span>
           </div>
 

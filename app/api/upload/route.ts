@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadToCloudinary(buffer, file.name, "formix/uploads");
+    const result = await uploadToCloudinary(buffer, file.name, "formify/uploads");
 
     return Response.json({
       url: result.url,

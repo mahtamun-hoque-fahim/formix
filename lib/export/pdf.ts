@@ -106,7 +106,7 @@ export function buildPdf(
       doc.setFontSize(7);
       doc.setTextColor(...TEXT_MUTED);
       doc.text(
-        `Page ${pageNum} of ${pageCount}   ·   Formix`,
+        `Page ${pageNum} of ${pageCount}   ·   Formify`,
         pageW / 2,
         doc.internal.pageSize.getHeight() - 18,
         { align: "center" }

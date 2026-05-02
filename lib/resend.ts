@@ -33,7 +33,7 @@ export async function sendSubmissionNotification(params: SubmissionNotificationP
     fieldSummary,
   } = params;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://formix.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://formify.vercel.app";
   const responsesUrl = `${appUrl}/dashboard/forms/${formSlug}/responses`;
 
   const fieldRows = fieldSummary
@@ -75,7 +75,7 @@ export async function sendSubmissionNotification(params: SubmissionNotificationP
             <td style="background:#111111;border-radius:0 0 12px 12px;padding:32px;">
 
               <!-- Logo + label -->
-              <p style="margin:0 0 24px;font-size:13px;font-weight:600;letter-spacing:0.08em;color:#6366f1;text-transform:uppercase;">Formix</p>
+              <p style="margin:0 0 24px;font-size:13px;font-weight:600;letter-spacing:0.08em;color:#6366f1;text-transform:uppercase;">Formify</p>
 
               <!-- Heading -->
               <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f5f5f5;line-height:1.3;">
@@ -125,7 +125,7 @@ export async function sendSubmissionNotification(params: SubmissionNotificationP
 </html>`;
 
   return getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? "notify@formix.app",
+    from: process.env.RESEND_FROM_EMAIL ?? "notify@formify.app",
     to: toEmail,
     subject: `New response on "${formTitle}"`,
     html,

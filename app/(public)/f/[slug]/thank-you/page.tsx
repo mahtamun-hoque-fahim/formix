@@ -33,7 +33,7 @@ export default function ThankYouPage() {
           className="inline-block mt-6 text-xs"
           style={{ color: "var(--text-disabled)" }}
         >
-          Powered by Formix
+          Powered by Formify
         </Link>
       </div>
     </main>

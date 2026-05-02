@@ -19,7 +19,7 @@ export interface CloudinaryUploadResult {
 export async function uploadToCloudinary(
   buffer: Buffer,
   originalName: string,
-  folder = "formix/uploads"
+  folder = "formify/uploads"
 ): Promise<CloudinaryUploadResult> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
