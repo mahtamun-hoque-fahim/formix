@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -14,31 +15,36 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
 
-export default clerkMiddleware(async (auth, req) => {
-  try {
-    if (isPublicRoute(req)) return NextResponse.next();
+// Guard: if Clerk keys are absent, skip auth entirely so the site doesn't 500
+const clerkConfigured =
+  !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !!process.env.CLERK_SECRET_KEY;
 
-    const { userId, sessionClaims } = await auth();
+const clerkHandler = clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) return NextResponse.next();
 
-    if (!userId) {
-      const signInUrl = new URL("/sign-in", req.url);
-      signInUrl.searchParams.set("redirect_url", req.url);
-      return NextResponse.redirect(signInUrl);
-    }
+  const { userId, sessionClaims } = await auth();
 
-    if (isAdminRoute(req)) {
-      const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
-      if (role !== "admin") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-      }
-    }
-
-    return NextResponse.next();
-  } catch (err) {
-    console.error("[middleware] error:", err);
-    return NextResponse.next();
+  if (!userId) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("redirect_url", req.url);
+    return NextResponse.redirect(signInUrl);
   }
+
+  if (isAdminRoute(req)) {
+    const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
+    if (role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+  }
+
+  return NextResponse.next();
 });
+
+export default function middleware(req: NextRequest) {
+  if (!clerkConfigured) return NextResponse.next();
+  return clerkHandler(req);
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
