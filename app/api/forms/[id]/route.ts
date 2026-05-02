@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-helpers";
 import { getDb } from "@/lib/db";
 import { forms } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
