@@ -63,7 +63,7 @@ export function Sidebar({ role }: SidebarProps) {
       {/* Logo */}
       <div className="px-3 mb-8">
         <Link href="/dashboard" className="text-xl font-bold font-syne" style={{ color: "var(--text)" }}>
-          Form<span style={{ color: "var(--accent)" }}>ix</span>
+          Form<span style={{ color: "var(--accent)" }}>ify</span>
         </Link>
       </div>
 

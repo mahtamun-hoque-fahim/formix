@@ -137,7 +137,7 @@ export async function GET(req: Request) {
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "26px", fontWeight: 700, color: "#f5f5f5" }}>
-              Form<span style={{ color: accentColor }}>ix</span>
+              Form<span style={{ color: accentColor }}>ify</span>
             </span>
           </div>
 

@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <span className="text-2xl font-bold font-syne" style={{ color: "var(--text)" }}>
-            Form<span style={{ color: "var(--accent)" }}>ix</span>
+            Form<span style={{ color: "var(--accent)" }}>ify</span>
           </span>
         </div>
         {children}

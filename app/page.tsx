@@ -15,7 +15,7 @@ function Navbar() {
       }}
     >
       <span className="text-lg font-bold font-syne" style={{ color: "var(--text)" }}>
-        Form<span style={{ color: "var(--accent)" }}>ix</span>
+        Form<span style={{ color: "var(--accent)" }}>ify</span>
       </span>
 
       <nav className="hidden md:flex items-center gap-6 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -267,11 +267,10 @@ function Pricing() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Free */}
           <div
-            className="p-7 rounded-xl flex flex-col"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            className="flex-1 p-7 rounded-xl flex flex-col"
           >
             <div className="mb-6">
               <p className="text-xs font-mono mb-2" style={{ color: "var(--text-muted)" }}>FREE</p>
@@ -300,7 +299,7 @@ function Pricing() {
 
           {/* Pro */}
           <div
-            className="p-7 rounded-xl flex flex-col relative overflow-hidden"
+            className="flex-1 p-7 rounded-xl flex flex-col relative overflow-hidden"
             style={{
               background: "var(--surface-elevated)",
               border: "1px solid rgba(99,102,241,0.4)",
@@ -392,7 +391,7 @@ function Footer() {
       style={{ borderColor: "var(--border)" }}
     >
       <span className="text-sm font-bold font-syne" style={{ color: "var(--text)" }}>
-        Form<span style={{ color: "var(--accent)" }}>ix</span>
+        Form<span style={{ color: "var(--accent)" }}>ify</span>
       </span>
       <p className="text-xs" style={{ color: "var(--text-disabled)" }}>
         © {new Date().getFullYear()} Formify. Built by{" "}
